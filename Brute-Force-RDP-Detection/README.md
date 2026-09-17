@@ -28,7 +28,7 @@ For this project, I built a Security Operations Center (SOC) environment in Micr
 
 ## Deployment
 
-### Step 1 – Create a Resource Group
+## Step 1 – Create a Resource Group
 
 In the Azure Portal, I created a Resource Group to contain all lab resources.
 
@@ -40,7 +40,7 @@ Region: West US 2
 
 <img width="1366" height="594" alt="Screenshot (564)" src="https://github.com/user-attachments/assets/fac434bf-fb95-4a05-8d5c-dda15b1e7036" />
 
-### Step 2 – Deploy the Honeypot VM via Free Services
+## Step 2 – Deploy the Honeypot VM via Free Services
 
 #### Create   Virtual Machine in Free Services
 Azure Portal → Free services → Virtual Machine → Create
@@ -62,7 +62,7 @@ Name: honeypot-vm-ip
 SKU: Standard
 Assignment: Static
 
-### Step 3 – Scope the NSG to RDP Only
+## Step 3 – Scope the NSG to RDP Only
 
 I confirmed the inbound rule after deployment and deliberately kept exposure limited to port 3389, rather than opening the VM to all ports and protocols — full exposure isn't necessary to attract RDP brute-force traffic and unnecessarily increases the risk of the VM being compromised and repurposed.
 
@@ -74,11 +74,11 @@ I confirmed the inbound rule after deployment and deliberately kept exposure lim
 
 
 
-### Step 4 – Connect to the VM
+## Step 4 – Connect to the VM
 
 I connected via RDP to confirm the deployment 
 
-### Step 5 – Create a Log Analytics Workspace and Enable Sentinel
+## Step 5 – Create a Log Analytics Workspace and Enable Sentinel
 
 #### Create Log Analytics Workspace
 Azure Portal → Log Analytics workspaces → Create
@@ -97,7 +97,7 @@ Select workspace: honeypot-workspace
 <img width="1366" height="522" alt="Screenshot (568)" src="https://github.com/user-attachments/assets/2e246c98-6c60-489e-9e50-74e2538facbb" />
 
 
-### Step 6 – Install Windows Security Events and Connect VM Logs via Azure Monitor Agent 
+## Step 6 – Install Windows Security Events and Connect VM Logs via Azure Monitor Agent 
 
 ### Install Windows Security Events (WSE)
 Microsoft Sentinel → Content Hub → Search "Windows Security Events" → Install
