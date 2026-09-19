@@ -19,7 +19,7 @@ For this project, I built a Security Operations Center (SOC) environment in Micr
 - **Azure Virtual Machines** 
 - **Azure Network Security Groups (NSG)**
 - **Log Analytics Workspace**
-- **Microsoft Sentinel** (cloud-native SIEM/SOAR)
+- **Microsoft Sentinel**
 - **Kusto Query Language (KQL)**
 - **Azure Monitor Agent (AMA) / Data Collection Rules (DCR)**
 - **Sentinel Watchlists** (GeoIP enrichment)
@@ -76,7 +76,7 @@ I confirmed the inbound rule after deployment and deliberately kept exposure lim
 
 ## Step 4 – Connect to the VM
 
-I connected via RDP to confirm the deployment 
+I connected via RDP to confirm the deployment succeeded and that the manually associated public IP was reachable
 
 ## Step 5 – Create a Log Analytics Workspace and Enable Sentinel
 
@@ -218,7 +218,7 @@ I imported a pre-trimmed GeoIP dataset
 
 Microsoft Defender portal → Microsoft Sentinel → Configuration → Watchlists → Add new
 
-Watchlist:   geoip
+Watchlist:   Geoip
 SearchKey:   network
 
 
@@ -253,16 +253,18 @@ Color by:     FailedAttempts
 
 <img width="1366" height="631" alt="Screenshot (583)" src="https://github.com/user-attachments/assets/59bb5405-63bf-4729-9f1f-619a58057105" />
 
-Conclusion
+## Conclusion
 
-This lab replicates the core workflow of a real SOC analyst — expose a system to genuine attack traffic, ingest and hunt through the resulting logs, build an automated detection, enrich the findings, and investigate the resulting incident — while working within real infrastructure constraints. Rather than treat the VM compute quota restriction as a blocker, I found and documented a legitimate alternative provisioning path, which is itself a practical skill: production environments have constraints too, and working around them without cutting corners on the security posture (scoping exposure to just RDP, keeping the OS firewall on, using a properly licensed GeoIP source) reflects real operational judgment.
+This project demonstrates hands-on SOC operations in Microsoft Azure. I deployed a Windows Server VM as an intentional RDP honeypot, restricted inbound traffic to TCP/3389, and built a full detection pipeline: Windows Security Events → Azure Monitor Agent/DCR → Log Analytics → Microsoft Sentinel. Using KQL, I hunted failed logons (Event ID 4625), confirmed RDP as the attack vector via Logon Type 10, and built a scheduled analytics rule that auto-generated incidents for repeated brute-force attempts. I then enriched attacker IPs with a GeoIP watchlist and visualized attack origins in a Sentinel workbook map.
 
-Key takeaways from this project:
+As of 19 September 2026 , the honeypot recorded 410 failed logons from 78 unique public IPs, with top targeted account Administrator , and top source countries including United States, United Kingdom, and Netherlands. The activity maps to MITRE ATT&CK T1110 (Brute Force) under Credential Access. The lab also required operational judgment: the Free Services VM lacked a public IP by default, so I associated a static one manually, and I kept exposure limited to RDP only rather than opening all ports. Overall, this project shows practical experience with cloud security monitoring, SIEM ingestion, threat hunting, detection engineering, and attack visualization — the same workflow a SOC analyst uses daily.
 
-Hands-on experience deploying and securing cloud infrastructure under real subscription constraints
-Practical use of Microsoft Sentinel as a SIEM, including data connectors, KQL, analytics rules, watchlists, and workbooks
-Incident investigation and response mapped to the MITRE ATT&CK framework
-Geographic enrichment and visualization of live attack telemetry
-Judgment in scoping a lab's exposure and controls appropriately, rather than maximizing exposure for its own sake
+## Key takeaways from this project:
+- **Built a full log ingestion pipeline** using Azure Monitor Agent, Data Collection Rules, a Log Analytics Workspace, and Microsoft Sentinel — the same telemetry flow used in production SOC environments.
+- **Hunted brute-force activity with KQL**, using Event ID 4625 to identify top source IPs, most-targeted usernames, hourly attack spikes, and Logon Type 10 to confirm RDP as the vector.
+- **Created a scheduled Sentinel analytics rule** that automatically generated incidents for repeated failed RDP logons, mapping to MITRE ATT&CK T1110 (Brute Force) under Credential Access.
+- **Enriched attacker IPs with a GeoIP watchlist** and built a Sentinel workbook map that visualizes attack origins, sized and colored by attempt volume.
+- **Applied operational judgment under real constraints**: the Free Services VM lacked a public IP by default, so I associated a static IP manually, and I kept NSG exposure limited to RDP only instead of opening the VM to all traffic.
+- **Demonstrated the core SOC analyst workflow end-to-end**: expose → ingest → hunt → detect → enrich → visualize, producing a working detection pipeline against live internet attack traffic.
 
-This project is part of my ongoing cybersecurity portfolio, demonstrating applied skills in cloud security monitoring and SOC operations.
+
