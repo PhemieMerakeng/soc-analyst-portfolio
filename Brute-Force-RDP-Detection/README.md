@@ -116,3 +116,153 @@ Review + create → Create
 
 #### Verify Agent Installation
 VM (NAS-net-vm) → Settings → Extensions + applications → Confirm AzureMonitorWindowsAgent shows "Provisioning succeeded"
+
+Step 7 – Hunt Through the Logs with KQL
+
+Microsoft Defender portal → Advanced Hunting
+
+1. Identify the attackers:
+
+```kql
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| summarize FailedAttempts = count() by IpAddress, TargetUserName
+| sort by FailedAttempts desc
+...
+```
+<img width="757" height="494" alt="Screenshot (584)" src="https://github.com/user-attachments/assets/be382a1f-36d7-41a4-9a39-45e895726fc5" />
+
+
+Groups failed logons by source IP and targeted account, ranked by attempt count — the starting point for identifying who's attacking and what they're after.
+
+2. Detect the spike:
+
+```kql
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| summarize FailedAttempts = count() by bin(TimeGenerated, 1h)
+| render timechart
+
+...
+```
+
+<img width="1366" height="564" alt="Screenshot (574)" src="https://github.com/user-attachments/assets/e33de107-943e-4938-a8fe-bc76959f51ae" />
+
+Plots failed logons in a time series graph to reveal whether activity is a genuine spike or just background noise.
+
+3. Identify the pattern:
+
+```kql
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| summarize Attempts = count() by TargetUserName
+| sort by Attempts desc
+| take 10
+...
+```
+<img width="998" height="435" alt="Screenshot (575)" src="https://github.com/user-attachments/assets/87f33187-d1d8-4f35-b677-1a3284c7e7ad" />
+
+
+Ranks the most-attempted usernames — generic guesses (admin, test, guest) point to an automated tool, while one specific username targeted repeatedly suggests something more deliberate.
+
+4. Confirm the attack vector:
+
+```kql
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| summarize count() by LogonType
+...
+```
+
+<img width="998" height="421" alt="Screenshot (576)" src="https://github.com/user-attachments/assets/bc874866-e493-4613-ac6e-fb42ed5a2aea" />
+
+
+Breaks down failures by Logon Type to confirm these attempts are actually coming through RDP, not some other login method producing the same event ID.
+
+
+Step 8 – Build the Analytics Rule
+
+Microsoft Defender portal → Microsoft Sentinel → Configuration → Analytics → Create → Scheduled query rule
+
+Rule name:    RDP Brute Force - Failed Logons
+Severity:     Medium
+Tactic:       Credential Access
+
+Rule query:
+
+```kql
+SecurityEvent
+| where EventID == 4625
+| summarize FailedAttempts = count() by IpAddress, TargetUserName
+| where FailedAttempts >= 5
+...
+```
+
+<img width="933" height="542" alt="Screenshot (579)" src="https://github.com/user-attachments/assets/6a3f4231-732a-4cea-a799-d60a66cad295" />
+
+Entity mapping:   Account = TargetUserName, IP = IpAddress
+Scheduling:       Run every 5 min, lookback 5 min
+Alert threshold:  Greater than 0 results
+Action:           Auto-create incident
+
+<img width="978" height="533" alt="Screenshot (580)" src="https://github.com/user-attachments/assets/410bcb4a-69f0-4345-933d-b2fefddcbb3b" />
+
+
+Step 9 – Enrich with GeoIP Data
+
+I imported a pre-trimmed GeoIP dataset 
+
+Microsoft Defender portal → Microsoft Sentinel → Configuration → Watchlists → Add new
+
+Watchlist:   geoip
+SearchKey:   network
+
+
+<img width="1181" height="564" alt="Screenshot (581)" src="https://github.com/user-attachments/assets/2d7b36c4-ad76-47d6-9cd1-2ec557031178" />
+
+
+Step 10 – Build the Attack Map Workbook
+
+Microsoft Defender portal → Microsoft Sentinel → Threat management → Workbooks → Add workbook
+
+I built a Sentinel Workbook that summarizes failed-logon events per unique attacking IP, looks up each one against the GeoIP watchlist, and plots the results on a live map — sized and colored by attempt volume.
+
+kql
+let GeoIP = _GetWatchlist('Geoip');
+SecurityEvent
+| where TimeGenerated > ago(24h)
+| where EventID == 4625
+| where isnotempty(IpAddress) and IpAddress != "-" and not(ipv4_is_private(IpAddress))
+| summarize FailedAttempts = count() by IpAddress
+| evaluate ipv4_lookup(GeoIP, IpAddress, network)
+| where isnotempty(latitude) and isnotempty(longitude)
+| project AttackerIP = IpAddress, FailedAttempts, Country = countryname,
+          City = cityname, Latitude = latitude, Longitude = longitude
+| sort by FailedAttempts desc
+
+Summarizes by IP first, then looks up each unique attacker once against the GeoIP watchlist, dropping any IP that didn't match a range so no blank markers try to render.
+
+Name:         Honeypot Attack Map
+Description:  Maps failed RDP logon attempts by attacker location.
+Size by:      FailedAttempts
+Color by:     FailedAttempts
+
+<img width="1366" height="631" alt="Screenshot (583)" src="https://github.com/user-attachments/assets/59bb5405-63bf-4729-9f1f-619a58057105" />
+
+Conclusion
+
+This lab replicates the core workflow of a real SOC analyst — expose a system to genuine attack traffic, ingest and hunt through the resulting logs, build an automated detection, enrich the findings, and investigate the resulting incident — while working within real infrastructure constraints. Rather than treat the VM compute quota restriction as a blocker, I found and documented a legitimate alternative provisioning path, which is itself a practical skill: production environments have constraints too, and working around them without cutting corners on the security posture (scoping exposure to just RDP, keeping the OS firewall on, using a properly licensed GeoIP source) reflects real operational judgment.
+
+Key takeaways from this project:
+
+Hands-on experience deploying and securing cloud infrastructure under real subscription constraints
+Practical use of Microsoft Sentinel as a SIEM, including data connectors, KQL, analytics rules, watchlists, and workbooks
+Incident investigation and response mapped to the MITRE ATT&CK framework
+Geographic enrichment and visualization of live attack telemetry
+Judgment in scoping a lab's exposure and controls appropriately, rather than maximizing exposure for its own sake
+
+This project is part of my ongoing cybersecurity portfolio, demonstrating applied skills in cloud security monitoring and SOC operations.
