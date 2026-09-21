@@ -290,7 +290,7 @@ Attempted to send notification emails via the Gmail connector. The Logic App ret
 
 This project took the RDP honeypot from the earlier lab and gave it a way to fight back on its own. Before, the honeypot could spot an attack and raise an alert, but someone still had to see that alert and decide what to do about it. Now the playbook handles that step: it pulls the attacker's IP off the incident, blocks it at the firewall, sends a notification, and leaves a note on the incident explaining what it did. I tested it against a real incident from real attack traffic, and all four pieces worked — the NSG updated, the Discord message arrived, the comment showed up on the incident, and the Logic App run finished clean.
 
-**Key takeaways from this project:**
+### **Key takeaways from this project:**
 
 - Built an end-to-end Sentinel-to-Logic-App automation chain: incident trigger, entity extraction, conditional exclusion logic, network remediation, external notification, and incident audit logging
 - Diagnosed three distinct failure modes in the same tool — a malformed request path, an incorrectly nested request body, and a pre-execution lookup failure — rather than treating them as unrelated bugs
