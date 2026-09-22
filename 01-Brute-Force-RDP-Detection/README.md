@@ -2,7 +2,7 @@
 
 ## Overview
 
-For this project, I built a Security Operations Center (SOC) environment in Microsoft Azure to practice the real workflow of a SOC analyst, exposing a real system to genuine internet attack traffic, ingesting the resulting logs into a SIEM, hunting through them with KQL, building an automated detection, and visualizing the attack activity geographically. I used a Free Services VM, connected its security logs to Microsoft Sentinel via the Azure Monitor Agent, hunted through failed RDP logons, built a scheduled analytics rule to auto-generate incidents, enriched the data with a GeoIP watchlist, and built a live workbook mapping attacker origins.
+For this project, I built a Security Operations Center (SOC) environment in Microsoft Azure to practice the real workflow of a SOC analyst, exposing a real system to genuine internet attack traffic, ingesting the resulting logs into a SIEM, hunting through them with KQL, building an automated detection, and visualizing the attack activity geographically. I used a Free Services VM, connected its security logs to Microsoft Sentinel via the Azure Monitor Agent, hunted through failed RDP logons, built a scheduled analytics rule that auto-generated incidents, enriched the data with a GeoIP watchlist, and built a live workbook mapping attacker origins.
 
 ## Objectives
 
@@ -199,7 +199,6 @@ SecurityEvent
 | where EventID == 4625
 | summarize FailedAttempts = count() by IpAddress, TargetUserName
 | where FailedAttempts >= 5
-...
 ```
 
 <img width="933" height="542" alt="Screenshot (579)" src="https://github.com/user-attachments/assets/6a3f4231-732a-4cea-a799-d60a66cad295" />
@@ -210,6 +209,8 @@ Alert threshold:  Greater than 0 results
 Action:           Auto-create incident
 
 <img width="978" height="533" alt="Screenshot (580)" src="https://github.com/user-attachments/assets/410bcb4a-69f0-4345-933d-b2fefddcbb3b" />
+
+**The rule fired multiple times against live attack traffic, generating 4 incidents over the observation period.**
 
 
 Step 9 – Enrich with GeoIP Data
@@ -222,7 +223,8 @@ Watchlist:   Geoip
 SearchKey:   network
 
 
-<img width="1181" height="564" alt="Screenshot (581)" src="https://github.com/user-attachments/assets/2d7b36c4-ad76-47d6-9cd1-2ec557031178" />
+<img width="1366" height="563" alt="Screenshot (615)" src="https://github.com/user-attachments/assets/98cf88bb-ce63-4b53-8532-b127c52d55db" />
+
 
 
 Step 10 – Build the Attack Map Workbook
@@ -231,7 +233,7 @@ Microsoft Defender portal → Microsoft Sentinel → Threat management → Workb
 
 I built a Sentinel Workbook that summarizes failed-logon events per unique attacking IP, looks up each one against the GeoIP watchlist, and plots the results on a live map — sized and colored by attempt volume.
 
-kql
+```kql
 let GeoIP = _GetWatchlist('Geoip');
 SecurityEvent
 | where TimeGenerated > ago(24h)
@@ -243,6 +245,7 @@ SecurityEvent
 | project AttackerIP = IpAddress, FailedAttempts, Country = countryname,
           City = cityname, Latitude = latitude, Longitude = longitude
 | sort by FailedAttempts desc
+```
 
 Summarizes by IP first, then looks up each unique attacker once against the GeoIP watchlist, dropping any IP that didn't match a range so no blank markers try to render.
 
@@ -257,11 +260,11 @@ Color by:     FailedAttempts
 
 This project demonstrates hands-on SOC operations in Microsoft Azure. I deployed a Windows Server VM as an intentional RDP honeypot, restricted inbound traffic to TCP/3389, and built a full detection pipeline: Windows Security Events → Azure Monitor Agent/DCR → Log Analytics → Microsoft Sentinel. Using KQL, I hunted failed logons (Event ID 4625), identified the attack vector through Logon Type 3 (network logon), which is how failed RDP authentication appears when NLA/CredSSP validates credentials before an interactive session is established, and built a scheduled analytics rule that auto-generated incidents for repeated brute-force attempts. I then enriched attacker IPs with a GeoIP watchlist and visualized attack origins in a Sentinel workbook map.
 
-As of 19 September 2026 , the honeypot recorded 410 failed logons from 78 unique public IPs, with top targeted account Administrator , and top source countries including United States, United Kingdom, and Netherlands. The activity maps to MITRE ATT&CK T1110 (Brute Force) under Credential Access. The lab also required operational judgment: the Free Services VM lacked a public IP by default, so I associated a static one manually, and I kept exposure limited to RDP only rather than opening all ports. Overall, this project shows practical experience with cloud security monitoring, SIEM ingestion, threat hunting, detection engineering, and attack visualization — the same workflow a SOC analyst uses daily.
+As of 21 September 2026, the honeypot had recorded 29,229 failed logons from 115 unique public IPs. Traffic was heavily concentrated: two IPs alone — 45.115.27.31 (17,148 attempts) and 138.226.239.7 (9,123 attempts) — accounted for roughly 90% of all failed logons, indicating sustained brute-force activity from a small number of determined sources rather than only broad background scanning. The top targeted account was Administrator. Top source countries were India, United States, Guam (a US territory listed separately in the GeoIP dataset), Australia, and the United Kingdom. 
 
 ## Key takeaways from this project:
 - **Built a full log ingestion pipeline** using Azure Monitor Agent, Data Collection Rules, a Log Analytics Workspace, and Microsoft Sentinel — the same telemetry flow used in production SOC environments.
-- **Hunted brute-force activity with KQL**, using Event ID 4625 to identify top source IPs, most-targeted usernames, hourly attack spikes, and Logon Type 10 to confirm RDP as the vector.
+- **Hunted brute-force activity with KQL, using Event ID 4625 to identify top source IPs, most-targeted usernames, hourly attack spikes, and Logon Type 3 to confirm RDP as the vector.
 - **Created a scheduled Sentinel analytics rule** that automatically generated incidents for repeated failed RDP logons, mapping to MITRE ATT&CK T1110 (Brute Force) under Credential Access.
 - **Enriched attacker IPs with a GeoIP watchlist** and built a Sentinel workbook map that visualizes attack origins, sized and colored by attempt volume.
 - **Applied operational judgment under real constraints**: the Free Services VM lacked a public IP by default, so I associated a static IP manually, and I kept NSG exposure limited to RDP only instead of opening the VM to all traffic.
