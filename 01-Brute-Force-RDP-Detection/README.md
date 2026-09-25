@@ -129,7 +129,6 @@ SecurityEvent
 | where EventID == 4625
 | summarize FailedAttempts = count() by IpAddress, TargetUserName
 | sort by FailedAttempts desc
-...
 ```
 <img width="757" height="494" alt="Screenshot (584)" src="https://github.com/user-attachments/assets/be382a1f-36d7-41a4-9a39-45e895726fc5" />
 
@@ -144,8 +143,6 @@ SecurityEvent
 | where EventID == 4625
 | summarize FailedAttempts = count() by bin(TimeGenerated, 1h)
 | render timechart
-
-...
 ```
 
 <img width="1366" height="564" alt="Screenshot (574)" src="https://github.com/user-attachments/assets/e33de107-943e-4938-a8fe-bc76959f51ae" />
@@ -161,7 +158,6 @@ SecurityEvent
 | summarize Attempts = count() by TargetUserName
 | sort by Attempts desc
 | take 10
-...
 ```
 <img width="998" height="435" alt="Screenshot (575)" src="https://github.com/user-attachments/assets/87f33187-d1d8-4f35-b677-1a3284c7e7ad" />
 
@@ -175,7 +171,6 @@ SecurityEvent
 | where TimeGenerated > ago(24h)
 | where EventID == 4625
 | summarize count() by LogonType
-...
 ```
 
 <img width="998" height="421" alt="Screenshot (576)" src="https://github.com/user-attachments/assets/bc874866-e493-4613-ac6e-fb42ed5a2aea" />
